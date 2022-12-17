@@ -901,16 +901,6 @@ int fatfs_list_directory_next(struct fatfs *fs, struct fs_dir_list_status *dirls
         }
         else
             break;
-
-
-
-
-
-
-
-
-
-
     }
 
     return result;
