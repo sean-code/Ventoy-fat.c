@@ -835,6 +835,72 @@ int fatfs_list_directory_next(struct fatfs *fs, struct fs_dir_list_status *dirls
  
 
 
+               // Normal Entry, only 8.3 Text
+                else
+#endif
+                if ( fatfs_entry_sfn_only(directoryEntry) )
+                {
+                    fatfs_lfn_cache_init(&lfn, 0);
+
+                    memset(short_filename, 0, sizeof(short_filename));
+
+                    // Copy name to string
+                    for (i=0; i<8; i++)
+                        short_filename[i] = directoryEntry->Name[i];
+
+                    // Extension
+                    dotRequired = 0;
+                    for (i=8; i<11; i++)
+                    {
+                        short_filename[i+1] = directoryEntry->Name[i];
+                        if (directoryEntry->Name[i] != ' ')
+                            dotRequired = 1;
+                    }
+
+                    // Dot only required if extension present
+                    if (dotRequired)
+                    {
+                        // If not . or .. entry
+                        if (short_filename[0]!='.')
+                            short_filename[8] = '.';
+                        else
+                            short_filename[8] = ' ';
+                    }
+                    else
+                        short_filename[8] = ' ';
+
+                    fatfs_get_sfn_display_name(entry->filename, short_filename);
+
+                    if (fatfs_entry_is_dir(directoryEntry))
+                        entry->is_dir = 1;
+                    else
+                        entry->is_dir = 0;
+
+#if FATFS_INC_TIME_DATE_SUPPORT
+                    // Get time / dates
+                    entry->create_time = ((uint16)directoryEntry->CrtTime[1] << 8) | directoryEntry->CrtTime[0];
+                    entry->create_date = ((uint16)directoryEntry->CrtDate[1] << 8) | directoryEntry->CrtDate[0];
+                    entry->access_date = ((uint16)directoryEntry->LstAccDate[1] << 8) | directoryEntry->LstAccDate[0];
+                    entry->write_time  = ((uint16)directoryEntry->WrtTime[1] << 8) | directoryEntry->WrtTime[0];
+                    entry->write_date  = ((uint16)directoryEntry->WrtDate[1] << 8) | directoryEntry->WrtDate[0];
+#endif
+
+                    entry->size = FAT_HTONL(directoryEntry->FileSize);
+                    entry->cluster = (FAT_HTONS(directoryEntry->FstClusHI)<<16) | FAT_HTONS(directoryEntry->FstClusLO);
+
+                    // Next starting position
+                    dirls->offset = item + 1;
+                    result = 1;
+                    return 1;
+                }
+            }// end of for
+
+            // If reached end of the dir move onto next sector
+            dirls->sector++;
+            dirls->offset = 0;
+        }
+        else
+            break;
 
 
 
@@ -845,14 +911,6 @@ int fatfs_list_directory_next(struct fatfs *fs, struct fs_dir_list_status *dirls
 
 
 
-
-
-
-
-
-
-
- 
     }
 
     return result;
